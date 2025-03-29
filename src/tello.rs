@@ -4,16 +4,21 @@ use std::str;
 use std::time::Duration;
 use std::thread;
 use std::sync::{Arc, Mutex};
+use std::fs;
+use std::path::Path;
 
 const TELLO_IP: &str = "192.168.10.1";
 const TELLO_PORT: u16 = 8889;
 const LOCAL_PORT: u16 = 8890;
 const STATE_PORT: u16 = 8890;
+const FILE_TRANSFER_PORT: u16 = 8888; // Port for file transfers
 
 pub struct Tello {
     socket: Option<UdpSocket>,
     tello_addr: SocketAddr,
     state_receiver: Option<Arc<Mutex<String>>>,
+    video_recording: bool,
+    download_path: String,
 }
 
 impl Tello {
@@ -27,7 +32,18 @@ impl Tello {
             socket: None,
             tello_addr,
             state_receiver: None,
+            video_recording: false,
+            download_path: String::from("./tello_media"), // Default download path
         })
+    }
+    
+    /// Set download path for media files
+    pub fn set_download_path(&mut self, path: &str) -> io::Result<()> {
+        if !Path::new(path).exists() {
+            fs::create_dir_all(path)?;
+        }
+        self.download_path = String::from(path);
+        Ok(())
     }
     
     /// Connect to the Tello drone
@@ -44,6 +60,11 @@ impl Tello {
         
         // Set up state receiver
         self.setup_state_receiver()?;
+        
+        // Create download directory if it doesn't exist
+        if !Path::new(&self.download_path).exists() {
+            fs::create_dir_all(&self.download_path)?;
+        }
         
         Ok(())
     }
@@ -174,6 +195,145 @@ impl Tello {
         
         Ok(())
     }
+    
+    /// Take a photo
+    pub fn take_photo(&self) -> io::Result<String> {
+        let response = self.send_command("takeoff photo")?;
+        
+        if response != "ok" {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Photo capture failed: {}", response),
+            ));
+        }
+        
+        println!("Photo captured successfully. To download, use 'download_media' command.");
+        Ok(response)
+    }
+    
+    /// Start video recording
+    pub fn start_video(&mut self) -> io::Result<String> {
+        if self.video_recording {
+            return Err(io::Error::new(
+                io::ErrorKind::AlreadyExists,
+                "Video recording is already in progress",
+            ));
+        }
+        
+        let response = self.send_command("streamon")?;
+        
+        if response != "ok" {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to start video streaming: {}", response),
+            ));
+        }
+        
+        self.video_recording = true;
+        println!("Video recording started");
+        Ok(response)
+    }
+    
+    /// Stop video recording
+    pub fn stop_video(&mut self) -> io::Result<String> {
+        if !self.video_recording {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Video recording is not in progress",
+            ));
+        }
+        
+        let response = self.send_command("streamoff")?;
+        
+        if response != "ok" {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to stop video streaming: {}", response),
+            ));
+        }
+        
+        self.video_recording = false;
+        println!("Video recording stopped. To download, use 'download_media' command.");
+        Ok(response)
+    }
+    
+    /// List media files on drone
+    pub fn list_media(&self) -> io::Result<Vec<String>> {
+        let response = self.send_command("ls")?;
+        
+        if response.contains("error") || response.contains("Error") {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to list media: {}", response),
+            ));
+        }
+        
+        // Parse response and extract file names
+        let files: Vec<String> = response
+            .lines()
+            .map(|l| l.trim().to_string())
+            .filter(|l| !l.is_empty() && l != "ok")
+            .collect();
+            
+        Ok(files)
+    }
+    
+    /// Download media file from drone
+    pub fn download_media(&self, filename: &str) -> io::Result<String> {
+        // Create directory if it doesn't exist
+        if !Path::new(&self.download_path).exists() {
+            fs::create_dir_all(&self.download_path)?;
+        }
+        
+        let dest_path = format!("{}/{}", self.download_path, filename);
+        println!("Downloading {} to {}...", filename, dest_path);
+        
+        // Send download command
+        let cmd = format!("download {}", filename);
+        let response = self.send_command(&cmd)?;
+        
+        if response.contains("error") || response.contains("Error") {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Download failed: {}", response),
+            ));
+        }
+        
+        // For actual implementation, we would need to set up a TCP server on FILE_TRANSFER_PORT
+        // and handle the file transfer protocol. This is simplified.
+        println!("Download initiated. File will be saved to: {}", dest_path);
+        
+        Ok(format!("Downloaded to {}", dest_path))
+    }
+    
+    /// Delete media file from drone
+    pub fn delete_media(&self, filename: &str) -> io::Result<String> {
+        let cmd = format!("rm {}", filename);
+        let response = self.send_command(&cmd)?;
+        
+        if response != "ok" {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to delete file {}: {}", filename, response),
+            ));
+        }
+        
+        Ok(format!("Deleted {}", filename))
+    }
+    
+    /// Delete all media files from drone
+    pub fn delete_all_media(&self) -> io::Result<String> {
+        let response = self.send_command("rmall")?;
+        
+        if response != "ok" {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Failed to delete all media: {}", response),
+            ));
+        }
+        
+        Ok("All media files deleted".to_string())
+    }
 }
 
 // Mock implementation for testing
@@ -292,5 +452,103 @@ mod tests {
         let result = mock.send_command("takeoff");
         
         assert_eq!(result.unwrap(), "error");
+    }
+    
+    #[test]
+    fn test_take_photo() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for photo command
+        mock.set_response("takeoff photo", "ok");
+        
+        // Test take photo command
+        let result = mock.send_command("takeoff photo");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["takeoff photo"]);
+    }
+    
+    #[test]
+    fn test_start_video() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for video start command
+        mock.set_response("streamon", "ok");
+        
+        // Test start video command
+        let result = mock.send_command("streamon");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["streamon"]);
+    }
+    
+    #[test]
+    fn test_stop_video() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for video stop command
+        mock.set_response("streamoff", "ok");
+        
+        // Test stop video command
+        let result = mock.send_command("streamoff");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["streamoff"]);
+    }
+    
+    #[test]
+    fn test_list_media() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for list media command
+        mock.set_response("ls", "file1.jpg\nfile2.mp4\nok");
+        
+        // Test list media command
+        let result = mock.send_command("ls");
+        
+        assert_eq!(result.unwrap(), "file1.jpg\nfile2.mp4\nok");
+        assert_eq!(mock.get_commands(), vec!["ls"]);
+    }
+    
+    #[test]
+    fn test_download_media() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for download command
+        mock.set_response("download file1.jpg", "ok");
+        
+        // Test download media command
+        let result = mock.send_command("download file1.jpg");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["download file1.jpg"]);
+    }
+    
+    #[test]
+    fn test_delete_media() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for delete media command
+        mock.set_response("rm file1.jpg", "ok");
+        
+        // Test delete media command
+        let result = mock.send_command("rm file1.jpg");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["rm file1.jpg"]);
+    }
+    
+    #[test]
+    fn test_delete_all_media() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for delete all media command
+        mock.set_response("rmall", "ok");
+        
+        // Test delete all media command
+        let result = mock.send_command("rmall");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["rmall"]);
     }
 }

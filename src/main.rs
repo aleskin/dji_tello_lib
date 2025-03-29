@@ -25,6 +25,17 @@ fn main() -> io::Result<()> {
     println!("  takeoff [height] - Take off (optional height in meters, default 1m, max 8m)");
     println!("  land           - Land the drone");
     println!("  state          - Get current drone state/telemetry");
+    
+    // Camera commands
+    println!("  photo          - Take a photo");
+    println!("  video start    - Start recording video");
+    println!("  video stop     - Stop recording video");
+    println!("  media list     - List media files on the drone");
+    println!("  media download <filename> - Download media file from drone");
+    println!("  media delete <filename>   - Delete media file from drone");
+    println!("  media deleteall - Delete all media files from drone");
+    println!("  media path <path> - Set download path for media files");
+    
     println!("  exit           - Exit the application");
     
     // Main command loop
@@ -93,6 +104,97 @@ fn main() -> io::Result<()> {
                         }
                     } else {
                         println!("No state information available. Make sure the drone is connected.");
+                    }
+                },
+                "photo" => {
+                    match drone.take_photo() {
+                        Ok(_) => println!("Photo taken successfully"),
+                        Err(e) => eprintln!("Failed to take photo: {}", e),
+                    }
+                },
+                "video" => {
+                    if parts.len() < 2 {
+                        println!("Please specify 'start' or 'stop' after 'video'");
+                        continue;
+                    }
+                    
+                    match parts[1] {
+                        "start" => {
+                            match drone.start_video() {
+                                Ok(_) => println!("Video recording started"),
+                                Err(e) => eprintln!("Failed to start video: {}", e),
+                            }
+                        },
+                        "stop" => {
+                            match drone.stop_video() {
+                                Ok(_) => println!("Video recording stopped"),
+                                Err(e) => eprintln!("Failed to stop video: {}", e),
+                            }
+                        },
+                        _ => println!("Unknown video command: {}", parts[1]),
+                    }
+                },
+                "media" => {
+                    if parts.len() < 2 {
+                        println!("Please specify a media command: list, download, delete, deleteall, path");
+                        continue;
+                    }
+                    
+                    match parts[1] {
+                        "list" => {
+                            match drone.list_media() {
+                                Ok(files) => {
+                                    println!("Media files on drone:");
+                                    for file in files {
+                                        println!("  {}", file);
+                                    }
+                                },
+                                Err(e) => eprintln!("Failed to list media: {}", e),
+                            }
+                        },
+                        "download" => {
+                            if parts.len() < 3 {
+                                println!("Please specify a filename to download");
+                                continue;
+                            }
+                            
+                            let filename = parts[2];
+                            match drone.download_media(filename) {
+                                Ok(result) => println!("{}", result),
+                                Err(e) => eprintln!("Failed to download media: {}", e),
+                            }
+                        },
+                        "delete" => {
+                            if parts.len() < 3 {
+                                println!("Please specify a filename to delete");
+                                continue;
+                            }
+                            
+                            let filename = parts[2];
+                            match drone.delete_media(filename) {
+                                Ok(result) => println!("{}", result),
+                                Err(e) => eprintln!("Failed to delete media: {}", e),
+                            }
+                        },
+                        "deleteall" => {
+                            match drone.delete_all_media() {
+                                Ok(result) => println!("{}", result),
+                                Err(e) => eprintln!("Failed to delete all media: {}", e),
+                            }
+                        },
+                        "path" => {
+                            if parts.len() < 3 {
+                                println!("Please specify a path for media downloads");
+                                continue;
+                            }
+                            
+                            let path = parts[2];
+                            match drone.set_download_path(path) {
+                                Ok(_) => println!("Download path set to: {}", path),
+                                Err(e) => eprintln!("Failed to set download path: {}", e),
+                            }
+                        },
+                        _ => println!("Unknown media command: {}", parts[1]),
                     }
                 },
                 "exit" => {

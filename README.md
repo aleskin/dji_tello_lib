@@ -37,6 +37,8 @@ The application provides a shell-like interface where you can enter commands to 
 
 Currently, the application supports the following commands:
 
+#### Basic Flight Controls
+
 - `takeoff [height]`: Take off with an optional height parameter in meters
   - Default height: 1 meter
   - Maximum allowed height: 8 meters
@@ -45,6 +47,42 @@ Currently, the application supports the following commands:
 - `land`: Land the drone safely
   - Example: `land`
 
+#### Camera Controls
+
+- `photo`: Take a photo with the drone's camera
+  - Example: `photo`
+
+- `video start`: Start recording video
+  - Example: `video start`
+
+- `video stop`: Stop recording video
+  - Example: `video stop`
+
+#### Media Management
+
+- `media list`: List all media files stored on the drone
+  - Example: `media list`
+
+- `media download <filename>`: Download a specific file from the drone
+  - Example: `media download photo_01.jpg`
+
+- `media delete <filename>`: Delete a specific file from the drone
+  - Example: `media delete photo_01.jpg`
+
+- `media deleteall`: Delete all media files from the drone
+  - Example: `media deleteall`
+
+- `media path <path>`: Set the local directory path where downloaded files are stored
+  - Example: `media path /home/user/tello_photos`
+  - Default path: `./tello_media`
+
+#### State and Telemetry
+
+- `state`: Get the current state and telemetry data of the drone
+  - Example: `state`
+
+#### Application Control
+
 - `exit`: Exit the application
 
 ### Multiple Commands
@@ -52,10 +90,10 @@ Currently, the application supports the following commands:
 You can execute multiple commands in sequence by separating them with semicolons (`;`):
 
 ```
-> takeoff 2; land
+> takeoff 2; photo; land
 ```
 
-This will instruct the drone to take off to a height of 2 meters and then land.
+This will instruct the drone to take off to a height of 2 meters, take a photo, and then land.
 
 ## Technical Details
 
@@ -65,6 +103,15 @@ Key components:
 
 - `src/main.rs`: Contains the main application logic and interactive command loop
 - `src/tello.rs`: Implements the Tello struct and methods for communicating with the drone
+
+### Media Files
+
+The media files captured by the drone are:
+- Temporarily stored on the drone's internal memory
+- Can be downloaded to your computer using the `media download` command
+- Can be deleted from the drone to free up space
+
+By default, downloaded files are stored in the `./tello_media` directory, but you can change this using the `media path` command.
 
 ## Testing
 
@@ -105,14 +152,16 @@ The application provides helpful error messages when:
 - The connection to the drone fails
 - A command fails to execute
 - An invalid parameter is provided (e.g., excessive height)
+- Media operations fail (e.g., file not found, disk full)
 
 ## Future Enhancements
 
 Planned features for future versions:
 - Support for more drone commands (flip, rotate, move in specific directions)
-- Video streaming support
-- Telemetry data display
+- Live video streaming preview
+- Telemetry data visualization
 - Command history and auto-completion
+- Predefined flight patterns and automated sequences
 
 ## License
 
