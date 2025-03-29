@@ -1,0 +1,41 @@
+# Rust build directory
+/target/
+
+# Debug output
+*.rs.bk
+
+# Cargo lock file (can be included in applications, but excluded in libraries)
+# Cargo.lock
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Editor backup files
+*~
+\#*\#
+.\#*
+
+# Generated documentation
+/doc/
+
+# Binary files
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment specific files
+.env
+
+# Log files
+*.log
+
+# Crashdump files
+*.dump
+
+# Profiling data files
+*.profraw
