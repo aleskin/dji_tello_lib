@@ -26,6 +26,14 @@ fn main() -> io::Result<()> {
     println!("  land           - Land the drone");
     println!("  state          - Get current drone state/telemetry");
     
+    // Movement commands
+    println!("  forward <distance> - Move forward by specified distance in cm (1-500)");
+    println!("  back <distance>    - Move backward by specified distance in cm (1-500)");
+    println!("  left <distance>    - Move left by specified distance in cm (1-500)");
+    println!("  right <distance>   - Move right by specified distance in cm (1-500)");
+    println!("  up <distance>      - Move up by specified distance in cm (1-500)");
+    println!("  down <distance>    - Move down by specified distance in cm (1-500)");
+    
     // Camera commands
     println!("  photo          - Take a photo");
     println!("  video start    - Start recording video");
@@ -94,6 +102,114 @@ fn main() -> io::Result<()> {
                         eprintln!("Landing failed: {}", e);
                     } else {
                         println!("Landing command executed successfully");
+                    }
+                },
+                "forward" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for forward movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.forward(distance) {
+                                Ok(_) => println!("Moved forward by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move forward: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
+                    }
+                },
+                "back" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for backward movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.back(distance) {
+                                Ok(_) => println!("Moved backward by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move backward: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
+                    }
+                },
+                "left" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for left movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.left(distance) {
+                                Ok(_) => println!("Moved left by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move left: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
+                    }
+                },
+                "right" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for right movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.right(distance) {
+                                Ok(_) => println!("Moved right by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move right: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
+                    }
+                },
+                "up" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for upward movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.up(distance) {
+                                Ok(_) => println!("Moved up by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move up: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
+                    }
+                },
+                "down" => {
+                    if parts.len() < 2 {
+                        println!("Please specify distance for downward movement");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(distance) => {
+                            match drone.down(distance) {
+                                Ok(_) => println!("Moved down by {} cm", distance),
+                                Err(e) => eprintln!("Failed to move down: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid distance value: {}", parts[1]);
+                        }
                     }
                 },
                 "state" => {

@@ -47,6 +47,32 @@ Currently, the application supports the following commands:
 - `land`: Land the drone safely
   - Example: `land`
 
+#### Movement Controls
+
+- `forward <distance>`: Move the drone forward by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `forward 100` (move forward 1 meter)
+
+- `back <distance>`: Move the drone backward by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `back 50` (move backward 0.5 meters)
+
+- `left <distance>`: Move the drone left by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `left 30` (move left 0.3 meters)
+
+- `right <distance>`: Move the drone right by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `right 80` (move right 0.8 meters)
+
+- `up <distance>`: Move the drone up by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `up 100` (move up 1 meter)
+
+- `down <distance>`: Move the drone down by the specified distance in centimeters
+  - Range: 1-500 cm
+  - Example: `down 50` (move down 0.5 meters)
+
 #### Rotation Controls
 
 - `rotate_cw <degrees>`: Rotate the drone clockwise by the specified number of degrees
@@ -107,10 +133,32 @@ Currently, the application supports the following commands:
 You can execute multiple commands in sequence by separating them with semicolons (`;`):
 
 ```
-> takeoff 2; photo; land
+> takeoff 2; forward 100; photo; back 100; land
 ```
 
-This will instruct the drone to take off to a height of 2 meters, take a photo, and then land.
+This will instruct the drone to:
+1. Take off to a height of 2 meters
+2. Move forward by 1 meter
+3. Take a photo
+4. Move back by 1 meter
+5. Land
+
+## Example: Flying in a Square Pattern
+
+Here's how to make the drone fly in a square pattern of 1 meter per side, taking a photo at each corner:
+
+```
+> takeoff 1.5
+> forward 100
+> photo
+> right 100
+> photo
+> back 100
+> photo
+> left 100
+> photo
+> land
+```
 
 ## Example: Flying in a Circle with Camera Pointing to Center
 
@@ -150,15 +198,6 @@ Here's an example of how to make the drone fly in a circle with a radius of 5 me
 > land
 ```
 
-This sequence of commands will:
-1. Take off to a height of 3 meters
-2. Start video recording
-3. Fly in an 8-point circle with a radius of 5 meters
-4. At each position, point the camera towards the center (0,0)
-5. Stop the video recording after completing the circle
-6. Download the recorded video to your computer
-7. Land the drone
-
 ## Technical Details
 
 The application connects to the Tello drone via UDP on port 8889, following the official [Tello SDK 2.0 Protocol](https://dl-cdn.ryzerobotics.com/downloads/Tello/Tello%20SDK%202.0%20User%20Guide.pdf).
@@ -190,6 +229,7 @@ Unit tests are located within the `src/tello.rs` file and include:
 - Tests for command processing and validation
 - Tests for error handling
 - Tests for rotation and camera positioning commands
+- Tests for movement commands
 
 Run the unit tests with:
 
@@ -222,7 +262,7 @@ The application provides helpful error messages when:
 ## Future Enhancements
 
 Planned features for future versions:
-- Support for more drone commands (flip, move in specific directions)
+- Support for more drone commands (flip, complex movement patterns)
 - Live video streaming preview
 - Telemetry data visualization
 - Command history and auto-completion
