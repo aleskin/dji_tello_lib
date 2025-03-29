@@ -6,7 +6,7 @@ use tello::Tello;
 fn main() -> io::Result<()> {
     // Initialize the drone connection
     println!("Connecting to Tello drone...");
-    let drone = match Tello::new() {
+    let mut drone = match Tello::new() {
         Ok(d) => d,
         Err(e) => {
             eprintln!("Failed to initialize drone connection: {}", e);
@@ -66,11 +66,15 @@ fn main() -> io::Result<()> {
                     
                     if let Err(e) = drone.takeoff(height) {
                         eprintln!("Takeoff failed: {}", e);
+                    } else {
+                        println!("Takeoff command executed successfully");
                     }
                 },
                 "land" => {
                     if let Err(e) = drone.land() {
                         eprintln!("Landing failed: {}", e);
+                    } else {
+                        println!("Landing command executed successfully");
                     }
                 },
                 "exit" => {
