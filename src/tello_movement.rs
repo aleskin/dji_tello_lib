@@ -1,3 +1,16 @@
+/*
+ * DJI Tello Drone Controller Library
+ *
+ * Copyright (c) 2025 aleskin
+ *
+ * This file is part of dji_tello_lib.
+ *
+ * dji_tello_lib is free software: you can redistribute it and/or modify
+ * it under the terms of the MIT License as published.
+ *
+ * Created: March 30, 2025
+ */
+
 // Методы движения для Tello
 use std::io;
 use super::tello::Tello;
