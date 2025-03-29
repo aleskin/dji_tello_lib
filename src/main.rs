@@ -36,6 +36,13 @@ fn main() -> io::Result<()> {
     println!("  media deleteall - Delete all media files from drone");
     println!("  media path <path> - Set download path for media files");
     
+    // Rotation commands
+    println!("  rotate_cw <degrees> - Rotate clockwise by specified degrees");
+    println!("  rotate_ccw <degrees> - Rotate counter-clockwise by specified degrees");
+    println!("  camera_to_center <x> <y> - Point camera towards the specified center point");
+    println!("  camera_from_center <x> <y> - Point camera away from the specified center point");
+    println!("  position <x> <y> <z> - Set current drone position for camera positioning");
+    
     println!("  exit           - Exit the application");
     
     // Main command loop
@@ -196,6 +203,129 @@ fn main() -> io::Result<()> {
                         },
                         _ => println!("Unknown media command: {}", parts[1]),
                     }
+                },
+                "rotate_cw" => {
+                    if parts.len() < 2 {
+                        println!("Please specify degrees for clockwise rotation");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(degrees) => {
+                            match drone.rotate_cw(degrees) {
+                                Ok(_) => println!("Rotated clockwise by {} degrees", degrees),
+                                Err(e) => eprintln!("Failed to rotate: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid degrees value: {}", parts[1]);
+                        }
+                    }
+                },
+                "rotate_ccw" => {
+                    if parts.len() < 2 {
+                        println!("Please specify degrees for counter-clockwise rotation");
+                        continue;
+                    }
+                    
+                    match parts[1].parse::<i32>() {
+                        Ok(degrees) => {
+                            match drone.rotate_ccw(degrees) {
+                                Ok(_) => println!("Rotated counter-clockwise by {} degrees", degrees),
+                                Err(e) => eprintln!("Failed to rotate: {}", e),
+                            }
+                        },
+                        Err(_) => {
+                            eprintln!("Invalid degrees value: {}", parts[1]);
+                        }
+                    }
+                },
+                "camera_to_center" => {
+                    if parts.len() < 3 {
+                        println!("Please specify center coordinates: camera_to_center <x> <y>");
+                        continue;
+                    }
+                    
+                    let x = match parts[1].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid x-coordinate: {}", parts[1]);
+                            continue;
+                        }
+                    };
+                    
+                    let y = match parts[2].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid y-coordinate: {}", parts[2]);
+                            continue;
+                        }
+                    };
+                    
+                    match drone.point_camera_to_center(x, y) {
+                        Ok(_) => println!("Camera pointed towards center point ({}, {})", x, y),
+                        Err(e) => eprintln!("Failed to point camera: {}", e),
+                    }
+                },
+                "camera_from_center" => {
+                    if parts.len() < 3 {
+                        println!("Please specify center coordinates: camera_from_center <x> <y>");
+                        continue;
+                    }
+                    
+                    let x = match parts[1].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid x-coordinate: {}", parts[1]);
+                            continue;
+                        }
+                    };
+                    
+                    let y = match parts[2].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid y-coordinate: {}", parts[2]);
+                            continue;
+                        }
+                    };
+                    
+                    match drone.point_camera_from_center(x, y) {
+                        Ok(_) => println!("Camera pointed away from center point ({}, {})", x, y),
+                        Err(e) => eprintln!("Failed to point camera: {}", e),
+                    }
+                },
+                "position" => {
+                    if parts.len() < 4 {
+                        println!("Please specify all coordinates: position <x> <y> <z>");
+                        continue;
+                    }
+                    
+                    let x = match parts[1].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid x-coordinate: {}", parts[1]);
+                            continue;
+                        }
+                    };
+                    
+                    let y = match parts[2].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid y-coordinate: {}", parts[2]);
+                            continue;
+                        }
+                    };
+                    
+                    let z = match parts[3].parse::<f32>() {
+                        Ok(val) => val,
+                        Err(_) => {
+                            eprintln!("Invalid z-coordinate: {}", parts[3]);
+                            continue;
+                        }
+                    };
+                    
+                    drone.set_position(x, y, z);
+                    println!("Drone position set to ({}, {}, {})", x, y, z);
                 },
                 "exit" => {
                     println!("Exiting Tello Control...");
