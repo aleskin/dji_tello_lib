@@ -24,6 +24,7 @@ fn main() -> io::Result<()> {
     println!("Available commands:");
     println!("  takeoff [height] - Take off (optional height in meters, default 1m, max 8m)");
     println!("  land           - Land the drone");
+    println!("  state          - Get current drone state/telemetry");
     println!("  exit           - Exit the application");
     
     // Main command loop
@@ -75,6 +76,23 @@ fn main() -> io::Result<()> {
                         eprintln!("Landing failed: {}", e);
                     } else {
                         println!("Landing command executed successfully");
+                    }
+                },
+                "state" => {
+                    if let Some(state) = drone.get_state() {
+                        println!("Drone state: {}", state);
+                        
+                        // Parse and display the state in a more readable format
+                        // State format is typically: pitch:%d;roll:%d;yaw:%d;vgx:%d;vgy:%d;vgz:%d;templ:%d;temph:%d;tof:%d;h:%d;bat:%d;baro:%.2f;time:%d;agx:%.2f;agy:%.2f;agz:%.2f;
+                        let state_pairs: Vec<&str> = state.split(';').collect();
+                        println!("Parsed state:");
+                        for pair in state_pairs {
+                            if !pair.is_empty() {
+                                println!("  {}", pair);
+                            }
+                        }
+                    } else {
+                        println!("No state information available. Make sure the drone is connected.");
                     }
                 },
                 "exit" => {

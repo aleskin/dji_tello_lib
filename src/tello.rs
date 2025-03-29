@@ -2,6 +2,8 @@ use std::io;
 use std::net::{UdpSocket, SocketAddr};
 use std::str;
 use std::time::Duration;
+use std::thread;
+use std::sync::{Arc, Mutex};
 
 const TELLO_IP: &str = "192.168.10.1";
 const TELLO_PORT: u16 = 8889;
@@ -11,6 +13,7 @@ const STATE_PORT: u16 = 8890;
 pub struct Tello {
     socket: Option<UdpSocket>,
     tello_addr: SocketAddr,
+    state_receiver: Option<Arc<Mutex<String>>>,
 }
 
 impl Tello {
@@ -23,6 +26,7 @@ impl Tello {
         Ok(Tello {
             socket: None,
             tello_addr,
+            state_receiver: None,
         })
     }
     
@@ -38,7 +42,59 @@ impl Tello {
         // Initialize the SDK mode
         self.send_command("command")?;
         
+        // Set up state receiver
+        self.setup_state_receiver()?;
+        
         Ok(())
+    }
+    
+    /// Sets up a separate thread to receive state information from the drone
+    fn setup_state_receiver(&mut self) -> io::Result<()> {
+        // Create a socket for receiving state information
+        let state_socket = UdpSocket::bind(format!("0.0.0.0:{}", STATE_PORT))?;
+        state_socket.set_read_timeout(Some(Duration::from_secs(1)))?;
+        
+        // Create a shared state to store the latest drone state
+        let state = Arc::new(Mutex::new(String::new()));
+        self.state_receiver = Some(Arc::clone(&state));
+        
+        // Start a thread to continuously receive state information
+        thread::spawn(move || {
+            let mut buffer = [0; 1024];
+            
+            loop {
+                match state_socket.recv_from(&mut buffer) {
+                    Ok((amount, _)) => {
+                        if let Ok(data) = str::from_utf8(&buffer[..amount]) {
+                            // Update the shared state
+                            if let Ok(mut state_guard) = state.lock() {
+                                *state_guard = data.to_string();
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        if e.kind() != io::ErrorKind::WouldBlock {
+                            eprintln!("Error receiving state: {}", e);
+                        }
+                    }
+                }
+                
+                // Sleep a short time to avoid consuming too much CPU
+                thread::sleep(Duration::from_millis(100));
+            }
+        });
+        
+        Ok(())
+    }
+    
+    /// Get the latest drone state
+    pub fn get_state(&self) -> Option<String> {
+        if let Some(state_receiver) = &self.state_receiver {
+            if let Ok(state) = state_receiver.lock() {
+                return Some(state.clone());
+            }
+        }
+        None
     }
     
     /// Send a command to the drone
