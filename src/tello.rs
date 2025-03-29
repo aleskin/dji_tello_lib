@@ -131,7 +131,7 @@ impl Tello {
     }
     
     /// Send a command to the drone
-    fn send_command(&self, command: &str) -> io::Result<String> {
+    pub fn send_command(&self, command: &str) -> io::Result<String> {
         if let Some(socket) = &self.socket {
             println!("Sending command: {}", command);
             
@@ -473,7 +473,7 @@ impl Tello {
     }
     
     /// Update position based on movement
-    fn update_position_after_movement(&mut self, direction: &str, distance: i32) {
+    pub fn update_position_after_movement(&mut self, direction: &str, distance: i32) {
         let distance_m = distance as f32 / 100.0; // Convert cm to meters
         
         match direction {

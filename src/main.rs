@@ -1,4 +1,5 @@
 mod tello;
+mod tello_movement;
 
 use std::io::{self, Write};
 use tello::Tello;
