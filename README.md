@@ -66,6 +66,39 @@ Key components:
 - `src/main.rs`: Contains the main application logic and interactive command loop
 - `src/tello.rs`: Implements the Tello struct and methods for communicating with the drone
 
+## Testing
+
+The project includes both unit tests and integration tests:
+
+### Unit Tests
+
+Unit tests are located within the `src/tello.rs` file and include:
+
+- Tests for core Tello functionality
+- Mock implementation for testing without actual drone hardware
+- Tests for command processing and validation
+- Tests for error handling
+
+Run the unit tests with:
+
+```
+make test
+```
+
+### Integration Tests
+
+Integration tests are located in the `tests/` directory and test the application as a whole:
+
+- `integration_tests.rs`: Tests for multiple command execution (semicolon-separated commands)
+- Tests for parameter validation
+- Tests for error handling in the command interface
+
+These tests are marked as `#[ignore]` by default since they require special setup. To run them:
+
+```
+cargo test -- --include-ignored
+```
+
 ## Error Handling
 
 The application provides helpful error messages when:

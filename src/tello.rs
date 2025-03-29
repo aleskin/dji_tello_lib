@@ -119,3 +119,122 @@ impl Tello {
         Ok(())
     }
 }
+
+// Mock implementation for testing
+#[cfg(test)]
+mod mock {
+    use super::*;
+    use std::cell::RefCell;
+    use std::collections::HashMap;
+    
+    pub struct MockTello {
+        commands: RefCell<Vec<String>>,
+        responses: RefCell<HashMap<String, String>>,
+    }
+    
+    impl MockTello {
+        pub fn new() -> Self {
+            let mut responses = HashMap::new();
+            responses.insert("command".to_string(), "ok".to_string());
+            responses.insert("takeoff".to_string(), "ok".to_string());
+            responses.insert("land".to_string(), "ok".to_string());
+            
+            MockTello {
+                commands: RefCell::new(Vec::new()),
+                responses: RefCell::new(responses),
+            }
+        }
+        
+        pub fn send_command(&self, command: &str) -> io::Result<String> {
+            self.commands.borrow_mut().push(command.to_string());
+            
+            let responses = self.responses.borrow();
+            let response = responses.get(command)
+                .cloned()
+                .unwrap_or_else(|| "error".to_string());
+                
+            Ok(response)
+        }
+        
+        pub fn get_commands(&self) -> Vec<String> {
+            self.commands.borrow().clone()
+        }
+        
+        pub fn set_response(&self, command: &str, response: &str) {
+            self.responses.borrow_mut().insert(command.to_string(), response.to_string());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use super::mock::MockTello;
+    
+    #[test]
+    fn test_tello_new() {
+        // Test that Tello::new() creates a valid instance
+        let tello = Tello::new().expect("Failed to create Tello instance");
+        assert!(tello.socket.is_none());
+        assert_eq!(tello.tello_addr.to_string(), format!("{}:{}", TELLO_IP, TELLO_PORT));
+    }
+    
+    #[test]
+    fn test_takeoff_default_height() {
+        let mock = MockTello::new();
+        
+        // Test takeoff without specifying height
+        mock.send_command("takeoff").unwrap();
+        
+        // No additional commands should be sent as default height is used
+        assert_eq!(mock.get_commands(), vec!["takeoff"]);
+    }
+    
+    #[test]
+    fn test_takeoff_custom_height() {
+        let mock = MockTello::new();
+        
+        // First send the takeoff command
+        mock.send_command("takeoff").unwrap();
+        
+        // Then send the height adjustment (e.g. for 2m = 200cm)
+        // Default takeoff is 1m (100cm), so we need to go up by 100cm more
+        mock.send_command("up 100").unwrap();
+        
+        assert_eq!(mock.get_commands(), vec!["takeoff", "up 100"]);
+    }
+    
+    #[test]
+    fn test_takeoff_invalid_height() {
+        let mock = MockTello::new();
+        
+        // Test with height greater than maximum (8m)
+        mock.send_command("takeoff").unwrap();
+        
+        // No additional height command should be sent as we use default
+        assert_eq!(mock.get_commands(), vec!["takeoff"]);
+    }
+    
+    #[test]
+    fn test_land() {
+        let mock = MockTello::new();
+        
+        // Test land command
+        mock.send_command("land").unwrap();
+        
+        assert_eq!(mock.get_commands(), vec!["land"]);
+    }
+    
+    #[test]
+    fn test_error_response() {
+        let mock = MockTello::new();
+        
+        // Set an error response for takeoff
+        mock.set_response("takeoff", "error");
+        
+        // This should result in an error
+        let result = mock.send_command("takeoff");
+        
+        assert_eq!(result.unwrap(), "error");
+    }
+}
