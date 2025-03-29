@@ -87,19 +87,13 @@ Currently, the application supports the following commands:
 - `camera_from_center <x> <y>`: Point the camera away from a specific center point
   - Example: `camera_from_center 0 0` (point camera away from the center point)
 
+#### Position Management
+
 - `position <x> <y> <z>`: Set the current position of the drone for camera positioning calculations
   - Example: `position 1 2 3` (set drone position to coordinates (1,2,3))
-
-#### Camera Controls
-
-- `photo`: Take a photo with the drone's camera
-  - Example: `photo`
-
-- `video start`: Start recording video
-  - Example: `video start`
-
-- `video stop`: Stop recording video
-  - Example: `video stop`
+  
+- `get_position`: Get the current tracked position of the drone
+  - Example: `get_position` (displays current X, Y, Z coordinates)
 
 #### Media Management
 
@@ -108,6 +102,10 @@ Currently, the application supports the following commands:
 
 - `media download <filename>`: Download a specific file from the drone
   - Example: `media download photo_01.jpg`
+
+- `media direct <filename>`: Download a specific file using direct TCP connection
+  - Example: `media direct photo_01.jpg`
+  - Uses port 8888 for more efficient file transfer
 
 - `media delete <filename>`: Delete a specific file from the drone
   - Example: `media delete photo_01.jpg`

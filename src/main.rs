@@ -41,16 +41,20 @@ fn main() -> io::Result<()> {
     println!("  video stop     - Stop recording video");
     println!("  media list     - List media files on the drone");
     println!("  media download <filename> - Download media file from drone");
+    println!("  media direct <filename>   - Download media using direct TCP connection");
     println!("  media delete <filename>   - Delete media file from drone");
     println!("  media deleteall - Delete all media files from drone");
     println!("  media path <path> - Set download path for media files");
+    
+    // Position commands
+    println!("  position <x> <y> <z> - Set current drone position for camera positioning");
+    println!("  get_position         - Display current drone position");
     
     // Rotation commands
     println!("  rotate_cw <degrees> - Rotate clockwise by specified degrees");
     println!("  rotate_ccw <degrees> - Rotate counter-clockwise by specified degrees");
     println!("  camera_to_center <x> <y> - Point camera towards the specified center point");
     println!("  camera_from_center <x> <y> - Point camera away from the specified center point");
-    println!("  position <x> <y> <z> - Set current drone position for camera positioning");
     
     println!("  exit           - Exit the application");
     
@@ -288,6 +292,18 @@ fn main() -> io::Result<()> {
                                 Err(e) => eprintln!("Failed to download media: {}", e),
                             }
                         },
+                        "direct" => {
+                            if parts.len() < 3 {
+                                println!("Please specify a filename for direct transfer");
+                                continue;
+                            }
+                            
+                            let filename = parts[2];
+                            match drone.transfer_file_via_direct_connection(filename) {
+                                Ok(result) => println!("{}", result),
+                                Err(e) => eprintln!("Failed to transfer file: {}", e),
+                            }
+                        },
                         "delete" => {
                             if parts.len() < 3 {
                                 println!("Please specify a filename to delete");
@@ -443,6 +459,10 @@ fn main() -> io::Result<()> {
                     
                     drone.set_position(x, y, z);
                     println!("Drone position set to ({}, {}, {})", x, y, z);
+                },
+                "get_position" => {
+                    let pos = drone.get_position();
+                    println!("Current drone position: ({:.2}, {:.2}, {:.2})", pos.x, pos.y, pos.z);
                 },
                 "exit" => {
                     println!("Exiting Tello Control...");

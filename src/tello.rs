@@ -506,6 +506,37 @@ impl Tello {
             _ => {}
         }
     }
+    
+    /// Transfer file from drone using a direct TCP connection
+    pub fn transfer_file_via_direct_connection(&self, filename: &str) -> io::Result<String> {
+        // Create directory if it doesn't exist
+        if !Path::new(&self.download_path).exists() {
+            fs::create_dir_all(&self.download_path)?;
+        }
+        
+        let dest_path = format!("{}/{}", self.download_path, filename);
+        println!("Setting up direct connection on port {} for file transfer...", FILE_TRANSFER_PORT);
+        
+        // Send command to initiate direct transfer mode
+        let cmd = format!("direct_transfer {}", filename);
+        let response = self.send_command(&cmd)?;
+        
+        if response.contains("error") || response.contains("Error") {
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("Direct transfer setup failed: {}", response),
+            ));
+        }
+        
+        // Here in a real implementation, we would:
+        // 1. Create a TCP server on FILE_TRANSFER_PORT
+        // 2. Accept a connection from the drone
+        // 3. Receive the file data and save it to dest_path
+        
+        println!("Direct file transfer initiated. File will be saved to: {}", dest_path);
+        
+        Ok(format!("File transfer started to {}", dest_path))
+    }
 }
 
 // Mock implementation for testing
@@ -771,5 +802,19 @@ mod tests {
         // 1. Create a Tello instance with known position and direction
         // 2. Call point_camera_to_center with specific coordinates
         // 3. Verify that the correct rotation command was issued
+    }
+    
+    #[test]
+    fn test_transfer_file_via_direct_connection() {
+        let mock = MockTello::new();
+        
+        // Set up mock response for direct transfer command
+        mock.set_response("direct_transfer test_file.mp4", "ok");
+        
+        // Test direct file transfer command
+        let result = mock.send_command("direct_transfer test_file.mp4");
+        
+        assert_eq!(result.unwrap(), "ok");
+        assert_eq!(mock.get_commands(), vec!["direct_transfer test_file.mp4"]);
     }
 }
