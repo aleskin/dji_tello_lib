@@ -165,31 +165,7 @@ Here's an example of how to make the drone fly in a circle with a radius of 5 me
 ```
 > takeoff 3
 > video start
-> position 5 0 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position 3.5 3.5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position 0 5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position -3.5 3.5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position -5 0 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position -3.5 -3.5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position 0 -5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position 3.5 -3.5 3
-> camera_to_center 0 0
-> rotate_cw 45
-> position 5 0 3
+> position 5 0 3; camera_to_center 0 0; rotate_cw 45; position 3.5 3.5 3; camera_to_center 0 0; rotate_cw 45; position 0 5 3; camera_to_center 0 0; rotate_cw 45; position -3.5 3.5 3; camera_to_center 0 0; rotate_cw 45; position -5 0 3; camera_to_center 0 0; rotate_cw 45; position -3.5 -3.5 3; camera_to_center 0 0; rotate_cw 45; position 0 -5 3; camera_to_center 0 0; rotate_cw 45; position 3.5 -3.5 3; camera_to_center 0 0; rotate_cw 45; position 5 0 3
 > video stop
 > media list
 > media download circle_flight.mp4
