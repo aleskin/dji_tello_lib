@@ -79,6 +79,9 @@ This document outlines the planned features and improvements for the DJI Tello L
 - [ ] Add video streaming to a local port for viewing in VLC or browser
 - [ ] Implement automatic media syncing to local storage
 - [ ] Create thumbnail generation for downloaded media
+- [ ] Implement direct video capture through UDP port used by the DJI Tello video stream
+- [ ] Add robust mechanisms for handling files coming from the drone
+- [ ] Create screenshot capture functionality from video stream for models that don't support internal photo storage
 
 ### Testing
 - [ ] Create a comprehensive test suite with mocked hardware responses
