@@ -22,6 +22,11 @@ This document outlines the planned features and improvements for the DJI Tello L
 
 **Interactive Controller Mode**:
    - [ ] `joystick` - control mode using joystick/gamepad
+   - [ ] `keyboard` - direct control mode using keyboard keys:
+       - WASD for forward, left, backward, right movement
+       - Arrow keys for up, down, and rotation
+       - Easy switching between command mode and direct control mode
+       - Visual indicator for current control mode
 
 ### Safety and Monitoring
 
