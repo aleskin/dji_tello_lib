@@ -36,9 +36,17 @@ cargo run
 
 ## Features
 
-### Interactive Command Mode
+### Enhanced Interactive Command Mode
 
-The application provides a shell-like interface where you can enter commands to control the drone. The command prompt looks like this:
+The application provides a shell-like interface with advanced features for an improved user experience:
+
+- **Command History**: Use the up and down arrow keys to navigate through previously entered commands
+- **Command Editing**: Use left and right arrow keys to move within the current command for editing
+- **Tab Completion**: Press the Tab key to autocomplete commands
+- **History Search**: Use Ctrl+R to search through command history
+- **Persistent History**: Command history is saved between sessions in the ~/.tello_history file
+
+The command prompt looks like this:
 
 ```
 > 
@@ -47,6 +55,19 @@ The application provides a shell-like interface where you can enter commands to 
 ### Available Commands
 
 Currently, the application supports the following commands:
+
+#### Application Control
+
+- `help`: Show a list of all available commands
+  - Example: `help` (displays all commands with descriptions)
+  - Can be used at any time during operation
+
+- `wait <seconds>`: Insert a specific delay between commands
+  - Example: `wait 2.5` (wait for 2.5 seconds before executing the next command)
+  - Useful for creating more precise flight sequences
+  - Can be used in command chains with semicolons: `takeoff; wait 5; land`
+
+- `exit`: Exit the application
 
 #### Basic Flight Controls
 
