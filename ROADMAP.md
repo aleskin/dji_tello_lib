@@ -6,11 +6,9 @@ This document outlines the planned features and improvements for the DJI Tello L
 
 ### Basic Flight and Control Commands
 
-**Trick Commands**:
-   - [ ] `flip [direction]` - perform a flip maneuver in the specified direction (l - left, r - right, f - forward, b - backward)
-
-**Speed Control**:
-   - [ ] `speed [value]` - set flight speed (from 10 to 100 cm/s)
+**Movement Commands with Stubs Only**:
+   - [ ] `flip [direction]` - perform a flip in the specified direction (l, r, f, b)
+   - [ ] `speed [value]` - set speed between 1-100 cm/s
 
 **Camera Settings**:
    - [ ] `exposure [level]` - set camera exposure level
@@ -33,8 +31,6 @@ This document outlines the planned features and improvements for the DJI Tello L
    - [ ] `return` - automatic return to takeoff point
 
 **Enhanced Status Monitoring**:
-   - [ ] `battery` - check battery charge
-   - [ ] `wifi` - check Wi-Fi signal level
    - [ ] `temp` - check drone temperature
 
 ### Command Aliases
@@ -57,25 +53,20 @@ This document outlines the planned features and improvements for the DJI Tello L
    - [ ] Package dependencies and configuration properly
 
 ### Extended Testing
-   - [ ] Test sequential commands with semicolons (e.g.: `takeoff; forward 100; rotate_cw 90; forward 100; land`)
    - [ ] Create and test simple missions (e.g., square flight pattern)
 
 ## Short-term Goals (1-2 months)
 
 ### Core Functionality
 - [ ] Implement mission planning system (pre-programmed sequences of movements)
-- [ ] Add support for flips and stunts (flip forward/back/left/right)
 - [ ] Improve error handling and recovery mechanisms
 - [ ] Implement automatic emergency landing on low battery
 
 ### User Experience
-- [ ] Add command history with arrow key navigation
-- [ ] Implement command auto-completion
 - [ ] Create visual feedback for drone's current position and orientation
 - [ ] Develop a configuration file system for storing preferences and aliases
 
 ### Media Management
-- [ ] Complete the direct TCP file transfer implementation for faster downloads
 - [ ] Add video streaming to a local port for viewing in VLC or browser
 - [ ] Implement automatic media syncing to local storage
 - [ ] Create thumbnail generation for downloaded media
@@ -143,10 +134,9 @@ This document outlines the planned features and improvements for the DJI Tello L
 
 ## Next Immediate Tasks
 
-1. Implement the `flip` command for performing aerobatic maneuvers
-2. Add `speed`, `exposure`, and `jpeg` commands for drone configuration
-3. Create a basic mission system for reading commands from files
-4. Implement safety commands (`emergency`, `hover`, `return`)
-5. Add enhanced status monitoring (`battery`, `wifi`, `temp`)
-6. Develop alias system for custom command sequences
-7. Set up package building for Debian and RPM systems
+1. Add `exposure` and `jpeg` commands for camera configuration
+2. Create a basic mission system for reading commands from files
+3. Implement safety commands (`emergency`, `hover`, `return`)
+4. Add `temp` command for monitoring drone temperature
+5. Develop alias system for custom command sequences
+6. Set up package building for Debian and RPM systems
