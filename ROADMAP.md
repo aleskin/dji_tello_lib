@@ -140,3 +140,34 @@ This document outlines the planned features and improvements for the DJI Tello L
 4. Add `temp` command for monitoring drone temperature
 5. Develop alias system for custom command sequences
 6. Set up package building for Debian and RPM systems
+
+## Additional Features
+
+### Debug and Diagnostics
+- [ ] Implement debug mode with detailed information about sent commands and received data
+- [ ] Display drone version and system information during connection
+- [ ] Improve the `info` command to fully report all available drone information
+- [ ] Remove the standard 3-second wait time for commands, use command status instead
+
+### Status Monitoring and Control Flow
+- [ ] Add command status checking to verify if a command has completed execution
+- [ ] Implement command queuing based on drone readiness status
+- [ ] Create battery status monitoring with warnings at critical levels
+- [ ] Enhance status command to return comprehensive drone state information
+
+### Media and Video Streaming
+- [ ] Fix existing media functionality
+- [ ] Document and implement the video streaming protocol
+- [ ] Enable real-time image transmission
+- [ ] Add capability to save video stream to files in a designated folder
+
+### Positioning and Environmental Data
+- [ ] Display current coordinates during flight
+- [ ] Monitor and report wind conditions
+- [ ] Create visualization of current position and orientation
+
+### Advanced Movement Patterns
+- [ ] Implement circular movement around a central point ("wheel" pattern)
+- [ ] Scale circular movement based on current altitude
+- [ ] Create advanced feature for circular movement in arbitrary planes
+- [ ] Add rotation during circular movement execution
