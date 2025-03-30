@@ -11,7 +11,7 @@
  * Created: March 30, 2025
  */
 
-// Методы движения для Tello
+// Movement methods for Tello
 use std::io;
 use super::tello::Tello;
 

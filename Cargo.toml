@@ -6,3 +6,8 @@ authors = ["Your Name"]
 description = "Interactive command-line application for controlling DJI Tello drone"
 
 [dependencies]
+rustyline = "10.0.0"
+dirs = "5.0.1"
+
+[build-dependencies]
+chrono = "0.4.31"
