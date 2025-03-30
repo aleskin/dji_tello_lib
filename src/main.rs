@@ -18,6 +18,53 @@ use std::io::{self, Write};
 use tello::Tello;
 use std::thread;
 use std::time::Duration;
+use std::collections::HashMap;
+
+// Define default delays for different command types
+struct CommandDelay {
+    delays: HashMap<&'static str, u64>,
+}
+
+impl CommandDelay {
+    fn new() -> Self {
+        let mut delays = HashMap::new();
+        // Movement commands need moderate delay
+        delays.insert("forward", 800);
+        delays.insert("back", 800);
+        delays.insert("left", 800);
+        delays.insert("right", 800);
+        delays.insert("up", 800);
+        delays.insert("down", 800);
+        
+        // Flight commands need longer delay
+        delays.insert("takeoff", 3000);
+        delays.insert("land", 3000);
+        
+        // Rotation commands
+        delays.insert("rotate_cw", 1000);
+        delays.insert("rotate_ccw", 1000);
+        
+        // Camera commands need minimal delay
+        delays.insert("photo", 500);
+        delays.insert("video", 500);
+        
+        // Media commands can be quick
+        delays.insert("media", 200);
+        delays.insert("state", 100);
+        delays.insert("position", 100);
+        delays.insert("get_position", 100);
+        
+        // Camera pointing commands
+        delays.insert("camera_to_center", 1000);
+        delays.insert("camera_from_center", 1000);
+        
+        CommandDelay { delays }
+    }
+    
+    fn get_delay(&self, command: &str) -> u64 {
+        *self.delays.get(command).unwrap_or(&500)
+    }
+}
 
 fn main() -> io::Result<()> {
     // Initialize the drone connection
@@ -35,6 +82,9 @@ fn main() -> io::Result<()> {
         return Err(e);
     }
     
+    // Create command delay settings
+    let command_delays = CommandDelay::new();
+    
     println!("Tello Control - Interactive Mode");
     println!("Type commands to control the drone. Separate multiple commands with semicolons (;)");
     println!("Available commands:");
@@ -49,6 +99,9 @@ fn main() -> io::Result<()> {
     println!("  right <distance>   - Move right by specified distance in cm (1-500)");
     println!("  up <distance>      - Move up by specified distance in cm (1-500)");
     println!("  down <distance>    - Move down by specified distance in cm (1-500)");
+    
+    // Wait command
+    println!("  wait <seconds>     - Wait specified number of seconds between commands");
     
     // Camera commands
     println!("  photo          - Take a photo");
@@ -97,12 +150,30 @@ fn main() -> io::Result<()> {
                 continue;
             }
             
+            // Check if it's a wait command
+            if parts[0] == "wait" && parts.len() > 1 {
+                if let Ok(seconds) = parts[1].parse::<f64>() {
+                    let millis = (seconds * 1000.0) as u64;
+                    println!("Waiting for {} seconds...", seconds);
+                    thread::sleep(Duration::from_millis(millis));
+                    println!("Wait completed");
+                    continue;
+                } else {
+                    println!("Invalid wait time: {}. Please specify a number of seconds.", parts[1]);
+                    continue;
+                }
+            }
+            
             // Execute the command
             execute_command(&mut drone, &parts)?;
             
-            // Add a delay between commands to give the drone time to stabilize
-            // This is especially important for movement commands
-            thread::sleep(Duration::from_millis(500));
+            // Add a delay between commands based on the command type
+            let delay = command_delays.get_delay(parts[0]);
+            
+            if delay > 0 {
+                println!("Waiting for command completion ({} ms)...", delay);
+                thread::sleep(Duration::from_millis(delay));
+            }
         }
     }
 }
@@ -490,18 +561,6 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
         "get_position" => {
             let pos = drone.get_position();
             println!("Current drone position: ({:.2}, {:.2}, {:.2})", pos.x, pos.y, pos.z);
-        },
-        "download_media" => {
-            if parts.len() < 2 {
-                println!("Please specify a filename to download");
-                return Ok(());
-            }
-            
-            let filename = parts[1];
-            match drone.download_media(filename) {
-                Ok(result) => println!("{}", result),
-                Err(e) => eprintln!("Failed to download media: {}", e),
-            }
         },
         "exit" => {
             println!("Exiting Tello Control...");
