@@ -257,11 +257,11 @@ impl Tello {
         // First attempt - "snapshot" command
         let response1 = self.send_command("snapshot");
         
-        if let Ok(resp) = response1 {
+        if let Ok(ref resp) = response1 {
             if resp == "ok" {
                 println!("Photo captured successfully with 'snapshot' command.");
                 println!("To download, use 'media download <filename>' command.");
-                return Ok(resp);
+                return Ok(resp.clone());
             }
         }
         
