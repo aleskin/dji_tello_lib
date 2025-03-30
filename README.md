@@ -67,6 +67,14 @@ Currently, the application supports the following commands:
   - Useful for creating more precise flight sequences
   - Can be used in command chains with semicolons: `takeoff; wait 5; land`
 
+- `info`: Display drone information including SDK version, serial number, hardware info, firmware version, battery level, and Wi-Fi signal strength
+  - Example: `info` (shows detailed drone status information)
+  - Can be used anytime when connected to the drone
+
+- `state`: Display current telemetry data from the drone
+  - Example: `state` (shows real-time telemetry information)
+  - Includes attitude, speed, battery level, time in flight, etc.
+  
 - `exit`: Exit the application
 
 #### Basic Flight Controls
@@ -104,6 +112,26 @@ Currently, the application supports the following commands:
 - `down <distance>`: Move the drone down by the specified distance in centimeters
   - Range: 1-500 cm
   - Example: `down 50` (move down 0.5 meters)
+
+#### Advanced Flight Controls
+
+- `flip <direction>`: Perform a flip in the specified direction
+  - Directions: 'l' (left), 'r' (right), 'f' (forward), 'b' (back)
+  - Example: `flip f` (perform a forward flip)
+  - Note: Requires sufficient battery (>50%)
+
+- `speed <value>`: Set the drone's speed in cm/s
+  - Range: 10-100 cm/s
+  - Example: `speed 50` (set speed to 50 cm/s)
+  - Default: 30 cm/s
+
+- `go <x> <y> <z> <speed>`: Move drone to specific coordinates at set speed
+  - Example: `go 100 50 30 20` (move to x=100cm, y=50cm, z=30cm at 20cm/s)
+  - Coordinates are relative to current position
+
+- `curve <x1> <y1> <z1> <x2> <y2> <z2> <speed>`: Fly in a curve through specified points
+  - Example: `curve 50 50 20 100 100 50 20` (fly through two points at 20cm/s)
+  - Creates a smooth arc through the specified coordinates
 
 #### Rotation Controls
 
@@ -211,15 +239,43 @@ Here's an example of how to make the drone fly in a circle with a radius of 5 me
 > land
 ```
 
+## Project Structure
+
+The project is organized into several key components:
+
+- `src/main.rs`: Contains the main application logic, startup routines, and error handling
+- `src/command_line.rs`: Implements the interactive command line interface, command parsing, and execution
+- `src/tello.rs`: Core library that implements the Tello struct and methods for communicating with the drone
+- `src/tello_movement.rs`: Contains specialized movement-related methods for the Tello struct
+
+### Code Organization
+
+The application uses a modular architecture with separation of concerns:
+
+#### Core Drone Communication
+- **Tello Struct**: Main interface for drone communication
+  - Manages socket connections
+  - Handles command sending and response parsing
+  - Provides high-level methods for drone control
+
+#### Command Line Interface
+- **CommandProcessor**: Parses and processes user input
+- **CommandInfo**: Stores information about available commands
+- **CommandCategory**: Organizes commands by category for better user experience
+
+#### Movement Control
+- Specialized methods for drone movement and positioning
+- Position tracking for advanced camera control
+- Functions for precise camera orientation
+
+#### Media Management
+- Methods for listing, downloading and deleting media files
+- Direct TCP file transfer support
+- Local file system integration
+
 ## Technical Details
 
 The application connects to the Tello drone via UDP on port 8889, following the official [Tello SDK 2.0 Protocol](https://dl-cdn.ryzerobotics.com/downloads/Tello/Tello%20SDK%202.0%20User%20Guide.pdf).
-
-Key components:
-
-- `src/main.rs`: Contains the main application logic and interactive command loop
-- `src/tello.rs`: Implements the Tello struct and methods for communicating with the drone
-- `src/tello_movement.rs`: Contains movement-related methods for the Tello struct
 
 ### Network Communication
 
@@ -228,6 +284,15 @@ The application uses several UDP ports for different purposes:
 - Port 8890: Local port for receiving responses
 - Port 8891: Receiving state/telemetry information
 - Port 8888: Reserved for direct file transfers
+
+### Command Processing Pipeline
+
+1. User enters command in the interactive shell
+2. Command is parsed and split into individual commands if separated by semicolons
+3. Each command is matched against available command handlers
+4. Command handlers validate parameters and convert them to appropriate formats
+5. Corresponding Tello struct methods are called
+6. Command results are displayed to the user
 
 ### Telemetry and Response Handling
 
@@ -270,18 +335,20 @@ Note that some Tello models don't support internal photo storage and only work w
 - Check that no other application is using the required UDP ports (8889, 8890, 8891)
 
 ### Command Response Issues
-- If commands are failing, check battery level with `state` command
+- If commands are failing, check battery level with `info` or `state` command
 - Ensure you're within the operational range of the drone
 - Some commands may not be available on certain Tello models
 
 ## Future Enhancements
 
 Planned features for future versions:
-- Support for more drone commands (flip, complex movement patterns)
+- Support for more drone commands (complex movement patterns)
 - Live video streaming preview
 - Telemetry data visualization
-- Command history and auto-completion
 - Predefined flight patterns and automated sequences
+- Mission planning with waypoints
+
+See the ROADMAP.md file for a detailed development plan.
 
 ## License
 
