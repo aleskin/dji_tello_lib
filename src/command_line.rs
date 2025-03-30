@@ -33,7 +33,7 @@ pub struct CommandCompleter {
 impl CommandCompleter {
     fn new() -> Self {
         let commands = vec![
-            "takeoff", "land", "state", "forward", "back", "left", "right", "up", "down",
+            "help", "takeoff", "land", "state", "forward", "back", "left", "right", "up", "down",
             "wait", "photo", "video start", "video stop", 
             "media list", "media download", "media direct", "media delete", "media deleteall", "media path",
             "position", "get_position", "rotate_cw", "rotate_ccw", 
@@ -295,6 +295,7 @@ fn get_history_file_path() -> PathBuf {
 
 /// Print available commands
 fn print_available_commands() {
+    println!("  help           - Show available commands");
     println!("  takeoff [height] - Take off (optional height in meters, default 1m, max 8m)");
     println!("  land           - Land the drone");
     println!("  state          - Get current drone state/telemetry");
@@ -337,6 +338,10 @@ fn print_available_commands() {
 /// Execute a single command
 fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
     match parts[0] {
+        "help" => {
+            println!("Available commands:");
+            print_available_commands();
+        },
         "takeoff" => {
             let height = if parts.len() > 1 {
                 match parts[1].parse::<f32>() {
