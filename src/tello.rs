@@ -23,7 +23,7 @@ use std::path::Path;
 const TELLO_IP: &str = "192.168.10.1";
 const TELLO_PORT: u16 = 8889;
 const LOCAL_PORT: u16 = 8890;
-const STATE_PORT: u16 = 8890;
+const STATE_PORT: u16 = 8891;
 const FILE_TRANSFER_PORT: u16 = 8888; // Port for file transfers
 
 pub struct Tello {
@@ -158,6 +158,41 @@ impl Tello {
                 .unwrap_or("Invalid UTF-8 response")
                 .to_string();
                 
+            // Check if the response is telemetry data instead of command response
+            if response.contains("pitch:") && response.contains("roll:") && response.contains("yaw:") {
+                println!("Received telemetry data instead of command response");
+                
+                // Try to receive actual command response with a short timeout
+                socket.set_read_timeout(Some(Duration::from_millis(500)))?;
+                
+                let mut new_buffer = [0; 1024];
+                match socket.recv_from(&mut new_buffer) {
+                    Ok((amount, _)) => {
+                        let new_response = str::from_utf8(&new_buffer[..amount])
+                            .unwrap_or("Invalid UTF-8 response")
+                            .to_string();
+                            
+                        println!("Actual response: {}", new_response);
+                        
+                        // Reset timeout to original value
+                        socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+                        
+                        return Ok(new_response);
+                    },
+                    Err(e) => {
+                        if e.kind() == io::ErrorKind::WouldBlock {
+                            println!("No additional response received. Assuming command was successful.");
+                            socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+                            return Ok("ok".to_string()); // Assume command was successful
+                        } else {
+                            println!("Error receiving response: {}", e);
+                            socket.set_read_timeout(Some(Duration::from_secs(5)))?;
+                            return Err(e);
+                        }
+                    }
+                }
+            }
+            
             println!("Response: {}", response);
             
             Ok(response)
@@ -223,7 +258,7 @@ impl Tello {
     
     /// Take a photo
     pub fn take_photo(&self) -> io::Result<String> {
-        let response = self.send_command("takeoff photo")?;
+        let response = self.send_command("snapshot")?;
         
         if response != "ok" {
             return Err(io::Error::new(
@@ -675,13 +710,13 @@ mod tests {
         let mock = MockTello::new();
         
         // Set up mock response for photo command
-        mock.set_response("takeoff photo", "ok");
+        mock.set_response("snapshot", "ok");
         
         // Test take photo command
-        let result = mock.send_command("takeoff photo");
+        let result = mock.send_command("snapshot");
         
         assert_eq!(result.unwrap(), "ok");
-        assert_eq!(mock.get_commands(), vec!["takeoff photo"]);
+        assert_eq!(mock.get_commands(), vec!["snapshot"]);
     }
     
     #[test]
