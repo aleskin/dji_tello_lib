@@ -160,6 +160,8 @@ This document outlines the planned features and improvements for the DJI Tello L
 - [ ] Document and implement the video streaming protocol
 - [ ] Enable real-time image transmission
 - [ ] Add capability to save video stream to files in a designated folder
+- [ ] Implement real-time camera feed display in a small window on the monitor
+- [ ] Create adjustable window size for the live camera feed
 
 ### Positioning and Environmental Data
 - [ ] Display current coordinates during flight
