@@ -11,11 +11,110 @@
  * Created: March 30, 2025
  */
 
-use std::io::{self, Write};
+use std::io::{self};
 use std::thread;
 use std::time::Duration;
 use std::collections::HashMap;
+use std::path::PathBuf;
+use rustyline::error::ReadlineError;
+use rustyline::{Editor, Config, CompletionType};
+use rustyline::completion::{Completer, Pair};
+use rustyline::highlight::Highlighter;
+use rustyline::hint::Hinter;
+use rustyline::validate::Validator;
+use rustyline::Helper;
 use crate::tello::Tello;
+
+/// Structure for command auto-completion
+pub struct CommandCompleter {
+    commands: Vec<String>,
+}
+
+impl CommandCompleter {
+    fn new() -> Self {
+        let commands = vec![
+            "takeoff", "land", "state", "forward", "back", "left", "right", "up", "down",
+            "wait", "photo", "video start", "video stop", 
+            "media list", "media download", "media direct", "media delete", "media deleteall", "media path",
+            "position", "get_position", "rotate_cw", "rotate_ccw", 
+            "camera_to_center", "camera_from_center", "exit"
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        
+        CommandCompleter { commands }
+    }
+}
+
+impl Completer for CommandCompleter {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        _pos: usize,
+        _ctx: &rustyline::Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+        // Split the line by semicolons to support completion for multiple commands
+        let parts: Vec<&str> = line.split(';').collect();
+        
+        // Get the last part that is being typed
+        let current_part = parts.last().unwrap_or(&"").trim();
+        let start_pos = line.len() - current_part.len();
+        
+        // Find matching commands
+        let matches: Vec<Pair> = self
+            .commands
+            .iter()
+            .filter(|cmd| cmd.starts_with(current_part))
+            .map(|cmd| Pair {
+                display: cmd.clone(),
+                replacement: cmd.clone() + " ",
+            })
+            .collect();
+        
+        Ok((start_pos, matches))
+    }
+}
+
+// Define a custom helper that implements necessary traits for rustyline
+pub struct CommandHelper {
+    completer: CommandCompleter,
+}
+
+impl CommandHelper {
+    fn new() -> Self {
+        CommandHelper {
+            completer: CommandCompleter::new(),
+        }
+    }
+}
+
+// Implement necessary traits for CommandHelper
+impl Helper for CommandHelper {}
+impl Hinter for CommandHelper {
+    type Hint = String;
+    fn hint(&self, _line: &str, _pos: usize, _ctx: &rustyline::Context<'_>) -> Option<Self::Hint> {
+        None
+    }
+}
+impl Highlighter for CommandHelper {}
+impl Validator for CommandHelper {}
+
+// Implement the Completer trait for CommandHelper by delegating to CommandCompleter
+impl Completer for CommandHelper {
+    type Candidate = Pair;
+
+    fn complete(
+        &self,
+        line: &str,
+        pos: usize,
+        ctx: &rustyline::Context<'_>,
+    ) -> rustyline::Result<(usize, Vec<Self::Candidate>)> {
+        self.completer.complete(line, pos, ctx)
+    }
+}
 
 /// Structure for managing command-specific delays
 pub struct CommandDelay {
@@ -63,73 +162,135 @@ impl CommandDelay {
     }
 }
 
-/// Run the interactive command-line interface
+/// Run the interactive command-line interface with enhanced editing capabilities
 pub fn run_command_line(mut drone: Tello) -> io::Result<()> {
     // Create command delay settings
     let command_delays = CommandDelay::new();
+    
+    // Setup rustyline with configuration
+    let config = Config::builder()
+        .history_ignore_space(true)
+        .completion_type(CompletionType::List)
+        .build();
+    
+    // Create editor with history and command completion
+    let helper = CommandHelper::new();
+    let mut rl = match Editor::with_config(config) {
+        Ok(editor) => editor,
+        Err(err) => {
+            return Err(io::Error::new(io::ErrorKind::Other, 
+                format!("Failed to initialize command line editor: {}", err)))
+        }
+    };
+    
+    rl.set_helper(Some(helper));
+    
+    // Tab completion is enabled by default with the helper
+    // No need to explicitly bind keys
+    
+    // Try to load history from previous sessions
+    let history_path = get_history_file_path();
+    if rl.load_history(&history_path).is_err() {
+        println!("No previous history found.");
+    }
     
     println!("Tello Control - Interactive Mode");
     println!("Type commands to control the drone. Separate multiple commands with semicolons (;)");
     println!("Available commands:");
     print_available_commands();
+    println!("Use arrow keys to navigate, Tab for completion, Ctrl+R to search history");
     
     // Main command loop
-    let mut input = String::new();
-    
     loop {
-        print!("> ");
-        io::stdout().flush()?;
+        // Read line with editing capabilities
+        let readline = rl.readline("> ");
         
-        input.clear();
-        io::stdin().read_line(&mut input)?;
-        
-        // Split input by semicolons to handle multiple commands
-        let commands: Vec<&str> = input.trim().split(';').map(|s| s.trim()).collect();
-        
-        for cmd in commands {
-            if cmd.is_empty() {
-                continue;
-            }
-            
-            let parts: Vec<&str> = cmd.split_whitespace().collect();
-            
-            if parts.is_empty() {
-                continue;
-            }
-            
-            // Check if it's a wait command
-            if parts[0] == "wait" && parts.len() > 1 {
-                if let Ok(seconds) = parts[1].parse::<f64>() {
-                    let millis = (seconds * 1000.0) as u64;
-                    println!("Waiting for {} seconds...", seconds);
-                    thread::sleep(Duration::from_millis(millis));
-                    println!("Wait completed");
-                    continue;
-                } else {
-                    println!("Invalid wait time: {}. Please specify a number of seconds.", parts[1]);
-                    continue;
+        match readline {
+            Ok(line) => {
+                // Add non-empty entries to history
+                if !line.trim().is_empty() {
+                    rl.add_history_entry(&line);
                 }
-            }
-            
-            // Execute the command
-            if let Err(e) = execute_command(&mut drone, &parts) {
-                if let Some(message) = e.get_ref() {
-                    if message.to_string() == "Exit requested" {
-                        return Err(e);
+                
+                // Split input by semicolons to handle multiple commands
+                let commands: Vec<&str> = line.trim().split(';').map(|s| s.trim()).collect();
+                
+                for cmd in commands {
+                    if cmd.is_empty() {
+                        continue;
+                    }
+                    
+                    let parts: Vec<&str> = cmd.split_whitespace().collect();
+                    
+                    if parts.is_empty() {
+                        continue;
+                    }
+                    
+                    // Check if it's a wait command
+                    if parts[0] == "wait" && parts.len() > 1 {
+                        if let Ok(seconds) = parts[1].parse::<f64>() {
+                            let millis = (seconds * 1000.0) as u64;
+                            println!("Waiting for {} seconds...", seconds);
+                            thread::sleep(Duration::from_millis(millis));
+                            println!("Wait completed");
+                            continue;
+                        } else {
+                            println!("Invalid wait time: {}. Please specify a number of seconds.", parts[1]);
+                            continue;
+                        }
+                    }
+                    
+                    // Execute the command
+                    if let Err(e) = execute_command(&mut drone, &parts) {
+                        if let Some(message) = e.get_ref() {
+                            if message.to_string() == "Exit requested" {
+                                // Save command history before exiting
+                                if let Err(history_err) = rl.save_history(&history_path) {
+                                    eprintln!("Warning: Failed to save command history: {}", history_err);
+                                }
+                                return Err(e);
+                            }
+                        }
+                        eprintln!("Error executing command: {}", e);
+                    }
+                    
+                    // Add a delay between commands based on the command type
+                    let delay = command_delays.get_delay(parts[0]);
+                    
+                    if delay > 0 {
+                        println!("Waiting for command completion ({} ms)...", delay);
+                        thread::sleep(Duration::from_millis(delay));
                     }
                 }
-                eprintln!("Error executing command: {}", e);
-            }
-            
-            // Add a delay between commands based on the command type
-            let delay = command_delays.get_delay(parts[0]);
-            
-            if delay > 0 {
-                println!("Waiting for command completion ({} ms)...", delay);
-                thread::sleep(Duration::from_millis(delay));
+            },
+            Err(ReadlineError::Interrupted) => {
+                println!("CTRL-C pressed, exiting...");
+                break;
+            },
+            Err(ReadlineError::Eof) => {
+                println!("CTRL-D pressed, exiting...");
+                break;
+            },
+            Err(err) => {
+                eprintln!("Error reading line: {:?}", err);
+                break;
             }
         }
     }
+    
+    // Save history when exiting normally
+    if let Err(err) = rl.save_history(&history_path) {
+        eprintln!("Error saving command history: {}", err);
+    }
+    
+    Ok(())
+}
+
+/// Get the path to the history file
+fn get_history_file_path() -> PathBuf {
+    let mut home_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+    home_dir.push(".tello_history");
+    home_dir
 }
 
 /// Print available commands
