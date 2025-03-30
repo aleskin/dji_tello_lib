@@ -491,6 +491,18 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
             let pos = drone.get_position();
             println!("Current drone position: ({:.2}, {:.2}, {:.2})", pos.x, pos.y, pos.z);
         },
+        "download_media" => {
+            if parts.len() < 2 {
+                println!("Please specify a filename to download");
+                return Ok(());
+            }
+            
+            let filename = parts[1];
+            match drone.download_media(filename) {
+                Ok(result) => println!("{}", result),
+                Err(e) => eprintln!("Failed to download media: {}", e),
+            }
+        },
         "exit" => {
             println!("Exiting Tello Control...");
             return Err(io::Error::new(io::ErrorKind::Other, "Exit requested"));
