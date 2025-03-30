@@ -12,6 +12,17 @@ This application provides a GDB-like interactive shell interface for controlling
 - DJI Tello or Tello EDU drone
 - Computer with Wi-Fi capability
 
+## Compatibility
+
+This library has been tested with:
+- DJI Tello (basic model)
+- DJI Tello EDU
+
+Please note that different Tello models may have varying levels of support for certain commands:
+- Basic Tello drones may have limited photo storage capabilities
+- Some functions might work differently based on firmware version
+- Media handling capabilities vary between models
+
 ## Getting Started
 
 1. Power on your DJI Tello drone
@@ -99,6 +110,7 @@ Currently, the application supports the following commands:
 
 - `media list`: List all media files stored on the drone
   - Example: `media list`
+  - Note: Some Tello models have limited media listing capabilities
 
 - `media download <filename>`: Download a specific file from the drone
   - Example: `media download photo_01.jpg`
@@ -106,6 +118,7 @@ Currently, the application supports the following commands:
 - `media direct <filename>`: Download a specific file using direct TCP connection
   - Example: `media direct photo_01.jpg`
   - Uses port 8888 for more efficient file transfer
+  - This is a more reliable method for large files
 
 - `media delete <filename>`: Delete a specific file from the drone
   - Example: `media delete photo_01.jpg`
@@ -117,14 +130,19 @@ Currently, the application supports the following commands:
   - Example: `media path /home/user/tello_photos`
   - Default path: `./tello_media`
 
-#### State and Telemetry
+#### Camera Controls
 
-- `state`: Get the current state and telemetry data of the drone
-  - Example: `state`
+- `photo`: Take a photo with the drone's camera
+  - Example: `photo`
+  - The library will try multiple commands to ensure compatibility with different Tello models
+  - Note: Some models may not store photos internally and require the official app
 
-#### Application Control
+- `video start`: Start recording video
+  - Example: `video start`
+  - Enables the video stream which can be captured
 
-- `exit`: Exit the application
+- `video stop`: Stop recording video
+  - Example: `video stop`
 
 ### Multiple Commands
 
@@ -180,58 +198,60 @@ Key components:
 
 - `src/main.rs`: Contains the main application logic and interactive command loop
 - `src/tello.rs`: Implements the Tello struct and methods for communicating with the drone
+- `src/tello_movement.rs`: Contains movement-related methods for the Tello struct
+
+### Network Communication
+
+The application uses several UDP ports for different purposes:
+- Port 8889: Command communication with the drone
+- Port 8890: Local port for receiving responses
+- Port 8891: Receiving state/telemetry information
+- Port 8888: Reserved for direct file transfers
+
+### Telemetry and Response Handling
+
+The library intelligently handles drone responses:
+- Distinguishes between command responses and telemetry data
+- Automatically processes telemetry data when received instead of command responses
+- Provides meaningful feedback even when the drone's response format varies
 
 ### Media Files
 
 The media files captured by the drone are:
 - Temporarily stored on the drone's internal memory
 - Can be downloaded to your computer using the `media download` command
+- Can be downloaded more efficiently using the `media direct` command for TCP-based transfers
 - Can be deleted from the drone to free up space
 
 By default, downloaded files are stored in the `./tello_media` directory, but you can change this using the `media path` command.
 
-## Testing
+### Photo Capture Compatibility
 
-The project includes both unit tests and integration tests:
+Different Tello models use different commands for photo capture. This library automatically:
+1. Attempts to use the `snapshot` command first
+2. If that fails, tries the `takepic` command for Tello EDU models
+3. Provides clear feedback about which method worked
 
-### Unit Tests
+Note that some Tello models don't support internal photo storage and only work with the official app.
 
-Unit tests are located within the `src/tello.rs` file and include:
+## Known Limitations
 
-- Tests for core Tello functionality
-- Mock implementation for testing without actual drone hardware
-- Tests for command processing and validation
-- Tests for error handling
-- Tests for rotation and camera positioning commands
-- Tests for movement commands
+- Some Tello models have limited media handling capabilities
+- Photo capture might not work on all drone models or firmware versions
+- The drone must be connected to the computer's Wi-Fi, which means you can't use Wi-Fi for internet connection simultaneously without additional hardware
+- Media listing may not be fully supported on some models
 
-Run the unit tests with:
+## Troubleshooting
 
-```
-make test
-```
+### Connection Issues
+- Ensure you're connected to the Tello's Wi-Fi network
+- Try restarting both the drone and the application
+- Check that no other application is using the required UDP ports (8889, 8890, 8891)
 
-### Integration Tests
-
-Integration tests are located in the `tests/` directory and test the application as a whole:
-
-- `integration_tests.rs`: Tests for multiple command execution (semicolon-separated commands)
-- Tests for parameter validation
-- Tests for error handling in the command interface
-
-These tests are marked as `#[ignore]` by default since they require special setup. To run them:
-
-```
-cargo test -- --include-ignored
-```
-
-## Error Handling
-
-The application provides helpful error messages when:
-- The connection to the drone fails
-- A command fails to execute
-- An invalid parameter is provided (e.g., excessive height, invalid rotation degrees)
-- Media operations fail (e.g., file not found, disk full)
+### Command Response Issues
+- If commands are failing, check battery level with `state` command
+- Ensure you're within the operational range of the drone
+- Some commands may not be available on certain Tello models
 
 ## Future Enhancements
 
