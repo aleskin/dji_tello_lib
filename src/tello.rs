@@ -62,6 +62,12 @@ impl Tello {
         })
     }
     
+    /// Send a command to the drone and get response
+    /// Alias for send_command, provided for better semantic clarity
+    pub fn send_command_with_response(&self, command: &str) -> io::Result<String> {
+        self.send_command(command)
+    }
+    
     /// Set download path for media files
     pub fn set_download_path(&mut self, path: &str) -> io::Result<()> {
         if !Path::new(path).exists() {

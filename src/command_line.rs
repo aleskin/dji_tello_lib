@@ -57,6 +57,8 @@ fn get_commands_registry() -> Vec<CommandInfo> {
                      description: "Show available commands", delay: 0 },
         CommandInfo { name: "version", category: CommandCategory::System, 
                      description: "Show application version", delay: 0 },
+        CommandInfo { name: "info", category: CommandCategory::System, 
+                     description: "Show detailed information about application and connected drone", delay: 0 },
         CommandInfo { name: "exit", category: CommandCategory::System, 
                      description: "Exit the application", delay: 0 },
         CommandInfo { name: "wait", category: CommandCategory::System, 
@@ -354,6 +356,7 @@ fn print_available_commands() {
     println!("\n=== SYSTEM COMMANDS ===");
     println!("  help           - Show available commands");
     println!("  version        - Show application version");
+    println!("  info           - Show detailed information about application and connected drone");
     println!("  exit           - Exit the application");
     println!("  wait <seconds> - Wait specified number of seconds between commands");
     
@@ -406,6 +409,124 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
             println!("Version: {}", VERSION);
             println!("Build date: {}", BUILD_DATE);
             println!("Copyright (c) 2025 aleskin");
+        },
+        "info" => {
+            // Application information
+            println!("=== APPLICATION INFORMATION ===");
+            println!("DJI Tello Controller Library");
+            println!("Version: {}", VERSION);
+            println!("Build date: {}", BUILD_DATE);
+            println!("Copyright (c) 2025 aleskin");
+            println!("");
+            
+            // Network information
+            println!("=== NETWORK CONFIGURATION ===");
+            println!("Command port: 8889 (UDP)");
+            println!("Response port: 8890 (UDP)");
+            println!("State port: 8891 (UDP)");
+            println!("Media port: 8888 (TCP/Direct)");
+            println!("");
+            
+            // Drone information
+            println!("=== DRONE INFORMATION ===");
+            
+            // Try to get drone SDK version
+            match drone.send_command_with_response("sdk?") {
+                Ok(sdk_version) => println!("SDK version: {}", sdk_version),
+                Err(_) => println!("SDK version: Unable to retrieve"),
+            }
+            
+            // Try to get drone serial number
+            match drone.send_command_with_response("sn?") {
+                Ok(serial) => println!("Serial number: {}", serial),
+                Err(_) => println!("Serial number: Unable to retrieve"),
+            }
+            
+            // Try to get drone hardware version
+            match drone.send_command_with_response("hardware?") {
+                Ok(hardware) => println!("Hardware version: {}", hardware),
+                Err(_) => println!("Hardware version: Unable to retrieve"),
+            }
+
+            // Try to get drone firmware version
+            match drone.send_command_with_response("version?") {
+                Ok(firmware) => println!("Firmware version: {}", firmware),
+                Err(_) => println!("Firmware version: Unable to retrieve"),
+            }
+            
+            // Try to get battery level
+            match drone.send_command_with_response("battery?") {
+                Ok(battery) => println!("Battery level: {}%", battery),
+                Err(_) => println!("Battery level: Unable to retrieve"),
+            }
+            
+            // Try to get WiFi signal-to-noise ratio
+            match drone.send_command_with_response("wifi?") {
+                Ok(wifi) => println!("WiFi SNR: {}", wifi),
+                Err(_) => println!("WiFi SNR: Unable to retrieve"),
+            }
+            
+            // Display full state information if available
+            if let Some(state) = drone.get_state() {
+                println!("\n=== DETAILED STATE INFORMATION ===");
+                
+                // Parse and display the state in a more readable format
+                let state_pairs: Vec<&str> = state.split(';').collect();
+                
+                // Sort and display by categories
+                let mut battery_info = Vec::new();
+                let mut flight_info = Vec::new();
+                let mut position_info = Vec::new();
+                let mut other_info = Vec::new();
+                
+                for pair in state_pairs {
+                    if pair.is_empty() {
+                        continue;
+                    }
+                    
+                    if pair.contains("bat") || pair.contains("temp") {
+                        battery_info.push(pair);
+                    } else if pair.contains("pitch") || pair.contains("roll") || pair.contains("yaw") || 
+                              pair.contains("vel") || pair.contains("spd") {
+                        flight_info.push(pair);
+                    } else if pair.contains("x") || pair.contains("y") || pair.contains("z") || 
+                              pair.contains("h") || pair.contains("tof") {
+                        position_info.push(pair);
+                    } else {
+                        other_info.push(pair);
+                    }
+                }
+                
+                if !battery_info.is_empty() {
+                    println!("Battery & Temperature:");
+                    for info in battery_info {
+                        println!("  {}", info);
+                    }
+                }
+                
+                if !flight_info.is_empty() {
+                    println!("Flight Parameters:");
+                    for info in flight_info {
+                        println!("  {}", info);
+                    }
+                }
+                
+                if !position_info.is_empty() {
+                    println!("Position Information:");
+                    for info in position_info {
+                        println!("  {}", info);
+                    }
+                }
+                
+                if !other_info.is_empty() {
+                    println!("Other Information:");
+                    for info in other_info {
+                        println!("  {}", info);
+                    }
+                }
+            } else {
+                println!("\nReal-time state information unavailable. Make sure the drone is connected.");
+            }
         },
         "exit" => {
             println!("Exiting Tello Control...");
