@@ -25,6 +25,91 @@ use rustyline::validate::Validator;
 use rustyline::Helper;
 use crate::tello::Tello;
 
+// Version of the application defined in Makefile.version
+// and injected via build.rs during compilation
+const VERSION: &str = env!("TELLO_LIB_VERSION");
+const BUILD_DATE: &str = env!("TELLO_BUILD_DATE");
+
+// Enumeration for command categories
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum CommandCategory {
+    System,      // System commands (help, version, exit)
+    FlightControl, // Flight control commands (takeoff, land, etc.)
+    Movement,    // Movement commands (forward, back, left, right, etc.)
+    Camera,      // Camera control commands (photo, video)
+    Media,       // Media management commands (download, delete, etc.)
+    Positioning  // Positioning commands (position, get_position)
+}
+
+// Structure for command information
+struct CommandInfo {
+    name: &'static str,
+    category: CommandCategory,
+    description: &'static str,
+    delay: u64, // Delay in ms after executing the command
+}
+
+// Global commands registry
+fn get_commands_registry() -> Vec<CommandInfo> {
+    vec![
+        // System commands
+        CommandInfo { name: "help", category: CommandCategory::System, 
+                     description: "Show available commands", delay: 0 },
+        CommandInfo { name: "version", category: CommandCategory::System, 
+                     description: "Show application version", delay: 0 },
+        CommandInfo { name: "exit", category: CommandCategory::System, 
+                     description: "Exit the application", delay: 0 },
+        CommandInfo { name: "wait", category: CommandCategory::System, 
+                     description: "Wait specified number of seconds between commands", delay: 0 },
+        
+        // Flight control commands
+        CommandInfo { name: "takeoff", category: CommandCategory::FlightControl, 
+                     description: "Take off (optional height in meters, default 1m, max 8m)", delay: 3000 },
+        CommandInfo { name: "land", category: CommandCategory::FlightControl, 
+                     description: "Land the drone", delay: 3000 },
+        CommandInfo { name: "state", category: CommandCategory::FlightControl, 
+                     description: "Get current drone state/telemetry", delay: 100 },
+        
+        // Movement commands
+        CommandInfo { name: "forward", category: CommandCategory::Movement, 
+                     description: "Move forward by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "back", category: CommandCategory::Movement, 
+                     description: "Move backward by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "left", category: CommandCategory::Movement, 
+                     description: "Move left by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "right", category: CommandCategory::Movement, 
+                     description: "Move right by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "up", category: CommandCategory::Movement, 
+                     description: "Move up by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "down", category: CommandCategory::Movement, 
+                     description: "Move down by specified distance in cm (1-500)", delay: 800 },
+        CommandInfo { name: "rotate_cw", category: CommandCategory::Movement, 
+                     description: "Rotate clockwise by specified degrees", delay: 1000 },
+        CommandInfo { name: "rotate_ccw", category: CommandCategory::Movement, 
+                     description: "Rotate counter-clockwise by specified degrees", delay: 1000 },
+        
+        // Camera commands
+        CommandInfo { name: "photo", category: CommandCategory::Camera, 
+                     description: "Take a photo", delay: 500 },
+        CommandInfo { name: "video", category: CommandCategory::Camera, 
+                     description: "Start or stop video recording", delay: 500 },
+        
+        // Media commands
+        CommandInfo { name: "media", category: CommandCategory::Media, 
+                     description: "Media management commands", delay: 200 },
+        
+        // Positioning commands
+        CommandInfo { name: "position", category: CommandCategory::Positioning, 
+                     description: "Set current drone position for camera positioning", delay: 100 },
+        CommandInfo { name: "get_position", category: CommandCategory::Positioning, 
+                     description: "Display current drone position", delay: 100 },
+        CommandInfo { name: "camera_to_center", category: CommandCategory::Positioning, 
+                     description: "Point camera towards the specified center point", delay: 1000 },
+        CommandInfo { name: "camera_from_center", category: CommandCategory::Positioning, 
+                     description: "Point camera away from the specified center point", delay: 1000 },
+    ]
+}
+
 /// Structure for command auto-completion
 pub struct CommandCompleter {
     commands: Vec<String>,
@@ -32,16 +117,10 @@ pub struct CommandCompleter {
 
 impl CommandCompleter {
     fn new() -> Self {
-        let commands = vec![
-            "help", "takeoff", "land", "state", "forward", "back", "left", "right", "up", "down",
-            "wait", "photo", "video start", "video stop", 
-            "media list", "media download", "media direct", "media delete", "media deleteall", "media path",
-            "position", "get_position", "rotate_cw", "rotate_ccw", 
-            "camera_to_center", "camera_from_center", "exit"
-        ]
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
+        let commands = get_commands_registry()
+            .iter()
+            .map(|info| info.name.to_string())
+            .collect();
         
         CommandCompleter { commands }
     }
@@ -123,36 +202,13 @@ pub struct CommandDelay {
 
 impl CommandDelay {
     pub fn new() -> Self {
+        let registry = get_commands_registry();
         let mut delays = HashMap::new();
-        // Movement commands need moderate delay
-        delays.insert("forward", 800);
-        delays.insert("back", 800);
-        delays.insert("left", 800);
-        delays.insert("right", 800);
-        delays.insert("up", 800);
-        delays.insert("down", 800);
         
-        // Flight commands need longer delay
-        delays.insert("takeoff", 3000);
-        delays.insert("land", 3000);
-        
-        // Rotation commands
-        delays.insert("rotate_cw", 1000);
-        delays.insert("rotate_ccw", 1000);
-        
-        // Camera commands need minimal delay
-        delays.insert("photo", 500);
-        delays.insert("video", 500);
-        
-        // Media commands can be quick
-        delays.insert("media", 200);
-        delays.insert("state", 100);
-        delays.insert("position", 100);
-        delays.insert("get_position", 100);
-        
-        // Camera pointing commands
-        delays.insert("camera_to_center", 1000);
-        delays.insert("camera_from_center", 1000);
+        // Заполняем задержки из реестра команд
+        for cmd in registry {
+            delays.insert(cmd.name, cmd.delay);
+        }
         
         CommandDelay { delays }
     }
@@ -295,26 +351,33 @@ fn get_history_file_path() -> PathBuf {
 
 /// Print available commands
 fn print_available_commands() {
+    println!("\n=== SYSTEM COMMANDS ===");
     println!("  help           - Show available commands");
+    println!("  version        - Show application version");
+    println!("  exit           - Exit the application");
+    println!("  wait <seconds> - Wait specified number of seconds between commands");
+    
+    println!("\n=== FLIGHT CONTROL COMMANDS ===");
     println!("  takeoff [height] - Take off (optional height in meters, default 1m, max 8m)");
     println!("  land           - Land the drone");
     println!("  state          - Get current drone state/telemetry");
     
-    // Movement commands
+    println!("\n=== MOVEMENT COMMANDS ===");
     println!("  forward <distance> - Move forward by specified distance in cm (1-500)");
     println!("  back <distance>    - Move backward by specified distance in cm (1-500)");
     println!("  left <distance>    - Move left by specified distance in cm (1-500)");
     println!("  right <distance>   - Move right by specified distance in cm (1-500)");
     println!("  up <distance>      - Move up by specified distance in cm (1-500)");
     println!("  down <distance>    - Move down by specified distance in cm (1-500)");
+    println!("  rotate_cw <degrees> - Rotate clockwise by specified degrees");
+    println!("  rotate_ccw <degrees> - Rotate counter-clockwise by specified degrees");
     
-    // Wait command
-    println!("  wait <seconds>     - Wait specified number of seconds between commands");
-    
-    // Camera commands
+    println!("\n=== CAMERA COMMANDS ===");
     println!("  photo          - Take a photo");
     println!("  video start    - Start recording video");
     println!("  video stop     - Stop recording video");
+    
+    println!("\n=== MEDIA MANAGEMENT ===");
     println!("  media list     - List media files on the drone");
     println!("  media download <filename> - Download media file from drone");
     println!("  media direct <filename>   - Download media using direct TCP connection");
@@ -322,26 +385,49 @@ fn print_available_commands() {
     println!("  media deleteall - Delete all media files from drone");
     println!("  media path <path> - Set download path for media files");
     
-    // Position commands
+    println!("\n=== POSITIONING COMMANDS ===");
     println!("  position <x> <y> <z> - Set current drone position for camera positioning");
     println!("  get_position         - Display current drone position");
-    
-    // Rotation commands
-    println!("  rotate_cw <degrees> - Rotate clockwise by specified degrees");
-    println!("  rotate_ccw <degrees> - Rotate counter-clockwise by specified degrees");
     println!("  camera_to_center <x> <y> - Point camera towards the specified center point");
     println!("  camera_from_center <x> <y> - Point camera away from the specified center point");
-    
-    println!("  exit           - Exit the application");
+    println!("");
 }
 
 /// Execute a single command
 fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
     match parts[0] {
+        // === SYSTEM COMMANDS ===
         "help" => {
             println!("Available commands:");
             print_available_commands();
         },
+        "version" => {
+            println!("DJI Tello Controller Library");
+            println!("Version: {}", VERSION);
+            println!("Build date: {}", BUILD_DATE);
+            println!("Copyright (c) 2025 aleskin");
+        },
+        "exit" => {
+            println!("Exiting Tello Control...");
+            return Err(io::Error::new(io::ErrorKind::Other, "Exit requested"));
+        },
+        "wait" => {
+            if parts.len() < 2 {
+                println!("Please specify wait time in seconds");
+                return Ok(());
+            }
+            
+            if let Ok(seconds) = parts[1].parse::<f64>() {
+                let millis = (seconds * 1000.0) as u64;
+                println!("Waiting for {} seconds...", seconds);
+                thread::sleep(Duration::from_millis(millis));
+                println!("Wait completed");
+            } else {
+                println!("Invalid wait time: {}. Please specify a number of seconds.", parts[1]);
+            }
+        },
+        
+        // === FLIGHT CONTROL COMMANDS ===
         "takeoff" => {
             let height = if parts.len() > 1 {
                 match parts[1].parse::<f32>() {
@@ -368,120 +454,11 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
                 println!("Landing command executed successfully");
             }
         },
-        "forward" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for forward movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.forward(distance) {
-                        Ok(_) => println!("Moved forward by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move forward: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
-        "back" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for backward movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.back(distance) {
-                        Ok(_) => println!("Moved backward by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move backward: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
-        "left" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for left movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.left(distance) {
-                        Ok(_) => println!("Moved left by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move left: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
-        "right" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for right movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.right(distance) {
-                        Ok(_) => println!("Moved right by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move right: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
-        "up" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for upward movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.up(distance) {
-                        Ok(_) => println!("Moved up by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move up: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
-        "down" => {
-            if parts.len() < 2 {
-                println!("Please specify distance for downward movement");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(distance) => {
-                    match drone.down(distance) {
-                        Ok(_) => println!("Moved down by {} cm", distance),
-                        Err(e) => eprintln!("Failed to move down: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid distance value: {}", parts[1]);
-                }
-            }
-        },
         "state" => {
             if let Some(state) = drone.get_state() {
                 println!("Drone state: {}", state);
                 
                 // Parse and display the state in a more readable format
-                // State format is typically: pitch:%d;roll:%d;yaw:%d;vgx:%d;vgy:%d;vgz:%d;templ:%d;temph:%d;tof:%d;h:%d;bat:%d;baro:%.2f;time:%d;agx:%.2f;agy:%.2f;agz:%.2f;
                 let state_pairs: Vec<&str> = state.split(';').collect();
                 println!("Parsed state:");
                 for pair in state_pairs {
@@ -493,6 +470,76 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
                 println!("No state information available. Make sure the drone is connected.");
             }
         },
+        
+        // === MOVEMENT COMMANDS ===
+        "forward" | "back" | "left" | "right" | "up" | "down" => {
+            if parts.len() < 2 {
+                println!("Please specify distance for {} movement", parts[0]);
+                return Ok(());
+            }
+            
+            match parts[1].parse::<i32>() {
+                Ok(distance) => {
+                    // Handle specific movement direction
+                    let result = match parts[0] {
+                        "forward" => drone.forward(distance),
+                        "back" => drone.back(distance),
+                        "left" => drone.left(distance),
+                        "right" => drone.right(distance),
+                        "up" => drone.up(distance),
+                        "down" => drone.down(distance),
+                        _ => unreachable!()
+                    };
+                    
+                    // Output result
+                    match result {
+                        Ok(_) => println!("Moved {} by {} cm", parts[0], distance),
+                        Err(e) => eprintln!("Failed to move {}: {}", parts[0], e),
+                    }
+                },
+                Err(_) => {
+                    eprintln!("Invalid distance value: {}", parts[1]);
+                }
+            }
+        },
+        "rotate_cw" => {
+            if parts.len() < 2 {
+                println!("Please specify degrees for clockwise rotation");
+                return Ok(());
+            }
+            
+            match parts[1].parse::<i32>() {
+                Ok(degrees) => {
+                    match drone.rotate_cw(degrees) {
+                        Ok(_) => println!("Rotated clockwise by {} degrees", degrees),
+                        Err(e) => eprintln!("Failed to rotate: {}", e),
+                    }
+                },
+                Err(_) => {
+                    eprintln!("Invalid degrees value: {}", parts[1]);
+                }
+            }
+        },
+        "rotate_ccw" => {
+            if parts.len() < 2 {
+                println!("Please specify degrees for counter-clockwise rotation");
+                return Ok(());
+            }
+            
+            match parts[1].parse::<i32>() {
+                Ok(degrees) => {
+                    match drone.rotate_ccw(degrees) {
+                        Ok(_) => println!("Rotated counter-clockwise by {} degrees", degrees),
+                        Err(e) => eprintln!("Failed to rotate: {}", e),
+                    }
+                },
+                Err(_) => {
+                    eprintln!("Invalid degrees value: {}", parts[1]);
+                }
+            }
+        },
+        
+        // === CAMERA COMMANDS ===
         "photo" => {
             match drone.take_photo() {
                 Ok(_) => println!("Photo taken successfully"),
@@ -521,6 +568,8 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
                 _ => println!("Unknown video command: {}", parts[1]),
             }
         },
+        
+        // === MEDIA COMMANDS ===
         "media" => {
             if parts.len() < 2 {
                 println!("Please specify a media command: list, download, delete, deleteall, path");
@@ -596,41 +645,44 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
                 _ => println!("Unknown media command: {}", parts[1]),
             }
         },
-        "rotate_cw" => {
-            if parts.len() < 2 {
-                println!("Please specify degrees for clockwise rotation");
+        
+        // === POSITIONING COMMANDS ===
+        "position" => {
+            if parts.len() < 4 {
+                println!("Please specify all coordinates: position <x> <y> <z>");
                 return Ok(());
             }
             
-            match parts[1].parse::<i32>() {
-                Ok(degrees) => {
-                    match drone.rotate_cw(degrees) {
-                        Ok(_) => println!("Rotated clockwise by {} degrees", degrees),
-                        Err(e) => eprintln!("Failed to rotate: {}", e),
-                    }
-                },
+            let x = match parts[1].parse::<f32>() {
+                Ok(val) => val,
                 Err(_) => {
-                    eprintln!("Invalid degrees value: {}", parts[1]);
+                    eprintln!("Invalid x-coordinate: {}", parts[1]);
+                    return Ok(());
                 }
-            }
+            };
+            
+            let y = match parts[2].parse::<f32>() {
+                Ok(val) => val,
+                Err(_) => {
+                    eprintln!("Invalid y-coordinate: {}", parts[2]);
+                    return Ok(());
+                }
+            };
+            
+            let z = match parts[3].parse::<f32>() {
+                Ok(val) => val,
+                Err(_) => {
+                    eprintln!("Invalid z-coordinate: {}", parts[3]);
+                    return Ok(());
+                }
+            };
+            
+            drone.set_position(x, y, z);
+            println!("Drone position set to ({}, {}, {})", x, y, z);
         },
-        "rotate_ccw" => {
-            if parts.len() < 2 {
-                println!("Please specify degrees for counter-clockwise rotation");
-                return Ok(());
-            }
-            
-            match parts[1].parse::<i32>() {
-                Ok(degrees) => {
-                    match drone.rotate_ccw(degrees) {
-                        Ok(_) => println!("Rotated counter-clockwise by {} degrees", degrees),
-                        Err(e) => eprintln!("Failed to rotate: {}", e),
-                    }
-                },
-                Err(_) => {
-                    eprintln!("Invalid degrees value: {}", parts[1]);
-                }
-            }
+        "get_position" => {
+            let pos = drone.get_position();
+            println!("Current drone position: ({:.2}, {:.2}, {:.2})", pos.x, pos.y, pos.z);
         },
         "camera_to_center" => {
             if parts.len() < 3 {
@@ -686,49 +738,8 @@ fn execute_command(drone: &mut Tello, parts: &[&str]) -> io::Result<()> {
                 Err(e) => eprintln!("Failed to point camera: {}", e),
             }
         },
-        "position" => {
-            if parts.len() < 4 {
-                println!("Please specify all coordinates: position <x> <y> <z>");
-                return Ok(());
-            }
-            
-            let x = match parts[1].parse::<f32>() {
-                Ok(val) => val,
-                Err(_) => {
-                    eprintln!("Invalid x-coordinate: {}", parts[1]);
-                    return Ok(());
-                }
-            };
-            
-            let y = match parts[2].parse::<f32>() {
-                Ok(val) => val,
-                Err(_) => {
-                    eprintln!("Invalid y-coordinate: {}", parts[2]);
-                    return Ok(());
-                }
-            };
-            
-            let z = match parts[3].parse::<f32>() {
-                Ok(val) => val,
-                Err(_) => {
-                    eprintln!("Invalid z-coordinate: {}", parts[3]);
-                    return Ok(());
-                }
-            };
-            
-            drone.set_position(x, y, z);
-            println!("Drone position set to ({}, {}, {})", x, y, z);
-        },
-        "get_position" => {
-            let pos = drone.get_position();
-            println!("Current drone position: ({:.2}, {:.2}, {:.2})", pos.x, pos.y, pos.z);
-        },
-        "exit" => {
-            println!("Exiting Tello Control...");
-            return Err(io::Error::new(io::ErrorKind::Other, "Exit requested"));
-        },
         _ => {
-            println!("Unknown command: {}", parts[0]);
+            println!("Unknown command: {}. Type 'help' for available commands.", parts[0]);
         }
     }
     
